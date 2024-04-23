@@ -1,5 +1,6 @@
-import * as core from '@actions/core'
-import { wait } from './wait'
+import * as core from '@actions/core';
+import github from '@actions/github';
+import axios from 'axios';
 
 /**
  * The main function for the action.
@@ -7,20 +8,73 @@ import { wait } from './wait'
  */
 export async function run(): Promise<void> {
   try {
-    const ms: string = core.getInput('milliseconds')
+    let footer = {
+      "type": "FactSet",
+      "facts": [
+          { "title": "📁 Repo: ", "value": github.context.repo.repo },
+          { "title": "🧑‍💻 Actor: ", "value": github.context.actor}
 
-    // Debug logs are only output if the `ACTIONS_STEP_DEBUG` secret is true
-    core.debug(`Waiting ${ms} milliseconds ...`)
+      ]
+    }
 
-    // Log the current timestamp, wait, then log the new timestamp
-    core.debug(new Date().toTimeString())
-    await wait(parseInt(ms, 10))
-    core.debug(new Date().toTimeString())
+    const actions:any[] = [];
 
-    // Set outputs for other workflow steps to use
-    core.setOutput('time', new Date().toTimeString())
+    const payload=github.context.payload;
+
+    let text: string|undefined = undefined;
+    if (payload.pull_request) {
+      text=payload.pull_request.title+': '+payload.action;
+      actions.push({
+        "type": "Action.OpenUrl",
+        "title": "View PR",
+        "url": payload.pull_request.html_url
+      });
+    }
+
+    if (payload.issue){
+      text=payload.issue.title+': '+payload.action;
+      actions.push({
+        "type": "Action.OpenUrl",
+        "title": "View Issue",
+        "url": payload.issue.html_url
+      });
+    }
+
+    if (text===undefined) 
+      text=JSON.stringify(github.context.payload);
+    
+    sendMessage({
+      "type": "message",
+      "summary": github.context.eventName,
+      "attachments": [
+          {
+              "contentType": "application/vnd.microsoft.card.adaptive",
+              "contentUrl": null,
+              "content": {
+                  "type": "AdaptiveCard",
+                  "version": "1.5",
+                  "body": [
+                    {
+                      "type": "TextBlock",
+                      "text": text,
+                      "wrap": true
+                  }
+                  ],
+                  "actions":actions,
+              }
+          }
+      ]
+  });
   } catch (error) {
     // Fail the workflow run if an error occurs
     if (error instanceof Error) core.setFailed(error.message)
   }
+}
+
+async function sendMessage(message:any){
+  const teamsLink=core.getInput('teamsSecret')
+  if (teamsLink===undefined) {
+    throw new Error("Teams webhook link is not set")
+  }
+  await axios.post(teamsLink , message )
 }
