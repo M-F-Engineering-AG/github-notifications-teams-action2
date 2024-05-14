@@ -24,8 +24,8 @@
     "node": ">=20"
   },
   "scripts": {
-    "publish": "npm run package && git commit --amend --no-edit -a && git push -f",
-    "package": "npx ncc build src/index.ts -o dist --source-map --license licenses.txt"
+    "publish": "git stash && git pull && git stash pop && npm run package && git commit --amend --no-edit -a && git push -f",
+    "package": "npx ncc build src/index.ts -o dist --license licenses.txt"
   },
   "license": "MIT",
   "dependencies": {

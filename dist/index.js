@@ -1,4 +1,4 @@
-require('./sourcemap-register.js');/******/ (() => { // webpackBootstrap
+/******/ (() => { // webpackBootstrap
 /******/ 	var __webpack_modules__ = ({
 
 /***/ 7351:
@@ -32754,7 +32754,7 @@ async function run() {
         }
         function addPr() {
             if (payload.pull_request) {
-                body.push(textBlock(`Pull Request ${payload.pull_request.title}**`));
+                body.push(textBlock(`Pull Request **${payload.pull_request.title}**`));
                 actions.push({
                     type: 'Action.OpenUrl',
                     title: 'View PR',
@@ -32763,7 +32763,7 @@ async function run() {
             }
         }
         if (eventName == 'push') {
-            summary = `Push to ${payload.ref}`;
+            summary = `Push to ${stripStart(payload.ref, 'refs/heads/')}`;
             addSummaryToBody = false;
             body.push(textBlock(`Push **${payload.head_commit?.message}** to **${payload.ref}** by **${payload.pusher?.name}**`));
             actions.push({
@@ -32795,6 +32795,16 @@ async function run() {
             summary = `Issue created by **${payload.issue?.user?.login}**: **${payload.issue?.title}** `;
             addIssue();
         }
+        else if (eventName == 'issues' && payload.action == 'edited') {
+            summary = `Issue edited by **${payload.sender?.login}**: **${payload.issue?.title}** `;
+            addIssue();
+        }
+        else if (eventName == 'pull_request' && payload.action == 'opened') {
+            summary = `PR opened: **${payload.pull_request?.title}**`;
+            addSummaryToBody = false;
+            body.push(textBlock(`PR opened by **${payload.pull_request?.user?.login}**`));
+            addPr();
+        }
         else if (eventName == 'workflow_run') {
             if (payload.action !== 'completed')
                 return;
@@ -32823,7 +32833,7 @@ async function run() {
             addIssue();
         }
         if (addSummaryToBody) {
-            body.push(textBlock(summary));
+            body.unshift(textBlock(summary));
         }
         await sendMessage({
             type: 'message',
@@ -32870,6 +32880,11 @@ function textBlock(text) {
         text: text,
         wrap: true
     };
+}
+function stripStart(text, start) {
+    if (text == null)
+        return text;
+    return text.startsWith(start) ? text.substring(start.length) : text;
 }
 
 
@@ -39159,4 +39174,3 @@ const main_1 = __nccwpck_require__(399);
 module.exports = __webpack_exports__;
 /******/ })()
 ;
-//# sourceMappingURL=index.js.map
